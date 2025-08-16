@@ -1,0 +1,40 @@
+services:
+  db:
+    build:
+      context: ./database/
+    image: ecommerce-chatbot-db
+    container_name: db-ecommerce-chatbot-ai
+    ports:
+      - "54321:5432"
+    volumes:
+      - ./database/01-init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ./database/02-seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+
+  app:
+    build:
+      context: .
+    image: ecommerce-chatbot-app
+    container_name: app-ecommerce-chatbot-ai
+    depends_on:
+      db: 
+        condition: service_healthy
+    ports:
+      - "5050:5050"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db-ecommerce-chatbot-ai:5432/postgres?sslmode=disable
+      PORT: ":5050"
+      JWT_SECRET: secret
+
+volumes:
+  pgdata:
