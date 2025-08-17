@@ -47,6 +47,12 @@ func NewServer(config *Config) {
 	r.Route("/api", func(r chi.Router) {
 		r.Post("/chat", handlers.AdaptHandler(chatHandler.HandleChatQuery))
 		r.Get("/health", handlers.AdaptHandler(chatHandler.HandleHealthCheck))
+
+		r.Get("/recommendations", chatHandler.HandleRecommendations)
+		r.Post("/preferences", chatHandler.HandleSavePreferences)
+
+		r.Get("/categories", chatHandler.HandleGetCategories)
+		r.Get("/products", chatHandler.HandleGetProducts)
 	})
 
 	fmt.Println("Starting server on port:", config.Port)
