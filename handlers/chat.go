@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+
 	"log"
 	"net/http"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"ecommerce/go/chatbot/ai"
 	"ecommerce/go/chatbot/database"
 	"ecommerce/go/chatbot/helpers"
+	"ecommerce/go/chatbot/models"
 )
 
 type ChatHandler struct {
@@ -32,6 +34,26 @@ type ChatResponse struct {
 	Model     string `json:"model"`
 }
 
+type HealthCheckResponse struct {
+	Status    string `json:"status"`
+	AiModel   string `json:"ai_model"`
+	Database  string `json:"database"`
+	AiService string `json:"ai_service"`
+}
+
+func AdaptHandler(h func(http.ResponseWriter, *http.Request) *models.ApiResponse) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+
+		resp := h(w, r)
+
+		w.WriteHeader(resp.StatusCode)
+		json.NewEncoder(w).Encode(resp)
+	}
+}
+
 func NewChatHandler(db *sql.DB, aiClient *ai.OllamaClient, modelName string) *ChatHandler {
 	return &ChatHandler{
 		db:        db,
@@ -40,16 +62,25 @@ func NewChatHandler(db *sql.DB, aiClient *ai.OllamaClient, modelName string) *Ch
 	}
 }
 
-func (h *ChatHandler) HandleChatQuery(w http.ResponseWriter, r *http.Request) {
+func (h *ChatHandler) HandleChatQuery(w http.ResponseWriter, r *http.Request) *models.ApiResponse {
 	var req ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
-		return
+		return &models.ApiResponse{
+			Data:       nil,
+			StatusCode: http.StatusBadRequest,
+			Success:    false,
+			Message:    "Invalid JSON",
+		}
 	}
 
 	if strings.TrimSpace(req.Message) == "" {
-		http.Error(w, "Message cannot be empty", http.StatusBadRequest)
-		return
+		return &models.ApiResponse{
+			Data:       nil,
+			StatusCode: http.StatusBadRequest,
+			Success:    false,
+			Message:    "Message cannot be empty",
+		}
+
 	}
 
 	if req.SessionID == "" {
@@ -75,24 +106,31 @@ func (h *ChatHandler) HandleChatQuery(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("AI generation error: %v", err)
 		http.Error(w, "Sorry, I'm having trouble processing your request right now", http.StatusInternalServerError)
-		return
+		return &models.ApiResponse{
+			Data:       nil,
+			StatusCode: http.StatusInternalServerError,
+			Success:    false,
+			Message:    "Sorry, I'm having trouble processing your request right now",
+		}
 	}
 
-	response := ChatResponse{
+	chatResponse := &ChatResponse{
 		Response:  aiResp.Response,
 		SessionID: req.SessionID,
 		Timestamp: time.Now().Format(time.RFC3339),
 		Model:     h.modelName,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Printf("Error encoding response: %v", err)
-		return
+	response := models.ApiResponse{
+		Data:       chatResponse,
+		StatusCode: http.StatusOK,
+		Success:    true,
+		Message:    "Success",
 	}
 
 	log.Printf("Chat [%s]: User: %s | Bot: %s", req.SessionID, req.Message, aiResp.Response)
+
+	return &response
 }
 
 func (h *ChatHandler) getRelevantProducts(query string) ([]ai.ProductContext, error) {
@@ -128,37 +166,50 @@ func (h *ChatHandler) getRelevantProducts(query string) ([]ai.ProductContext, er
 	return products, nil
 }
 
-func (h *ChatHandler) HandleHealthCheck(w http.ResponseWriter, r *http.Request) {
+func (h *ChatHandler) HandleHealthCheck(w http.ResponseWriter, r *http.Request) *models.ApiResponse {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
 	if err := h.aiClient.HealthCheck(ctx); err != nil {
-		response := map[string]string{
-			"status":     "error",
-			"ai_service": err.Error(),
+		response := &HealthCheckResponse{
+			Status:    "error",
+			AiService: err.Error(),
+			AiModel:   h.modelName,
+			Database:  "No check",
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(response)
-		return
+		return &models.ApiResponse{
+			Data:       response,
+			StatusCode: http.StatusServiceUnavailable,
+			Message:    "Error AI service",
+			Success:    false,
+		}
 	}
 
 	if err := h.db.Ping(); err != nil {
-		response := map[string]string{
-			"status":   "error",
-			"database": err.Error(),
+		response := &HealthCheckResponse{
+			Status:    "error",
+			AiService: "Success",
+			AiModel:   h.modelName,
+			Database:  err.Error(),
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(response)
-		return
+		return &models.ApiResponse{
+			Data:       response,
+			StatusCode: http.StatusServiceUnavailable,
+			Message:    "Error db connection",
+			Success:    false,
+		}
 	}
 
-	response := map[string]string{
-		"status":   "healthy",
-		"ai_model": h.modelName,
-		"database": "connected",
+	response := &HealthCheckResponse{
+		Status:    "healthy",
+		AiService: "Success",
+		AiModel:   h.modelName,
+		Database:  "connected",
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	return &models.ApiResponse{
+		Data:       response,
+		StatusCode: http.StatusOK,
+		Message:    "Success",
+		Success:    true,
+	}
 }

@@ -29,8 +29,8 @@ func ListProductsHandler(w http.ResponseWriter, r *http.Request) *models.ApiResp
 		return &models.ApiResponse{
 			Data:       nil,
 			StatusCode: http.StatusInternalServerError,
-			Message:    "error al decodificar peticion",
-			Error:      err.Error(),
+			Message:    err.Error(),
+			Success:    false,
 		}
 	}
 
@@ -38,7 +38,7 @@ func ListProductsHandler(w http.ResponseWriter, r *http.Request) *models.ApiResp
 		Data:       posts,
 		Message:    "SUCCESS",
 		StatusCode: http.StatusOK,
-		Error:      "",
+		Success:    true,
 	}
 
 }

@@ -45,8 +45,8 @@ func NewServer(config *Config) {
 
 	// Routes
 	r.Route("/api", func(r chi.Router) {
-		r.Post("/chat", chatHandler.HandleChatQuery)
-		r.Get("/health", chatHandler.HandleHealthCheck)
+		r.Post("/chat", handlers.AdaptHandler(chatHandler.HandleChatQuery))
+		r.Get("/health", handlers.AdaptHandler(chatHandler.HandleHealthCheck))
 	})
 
 	fmt.Println("Starting server on port:", config.Port)
