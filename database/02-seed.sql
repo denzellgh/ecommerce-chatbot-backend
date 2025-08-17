@@ -70,3 +70,7 @@ INSERT INTO user_preferences (id, user_session, preferred_categories, price_rang
 ('pref_session_001', 'demo_session_123', '{"cat_laptops", "cat_gaming"}', 500.00, 2000.00, '{"Apple", "ASUS", "Dell"}', NOW()),
 ('pref_session_002', 'demo_session_456', '{"cat_phones", "cat_audio"}', 200.00, 1500.00, '{"Apple", "Samsung", "Sony"}', NOW()),
 ('pref_session_003', 'demo_session_789', '{"cat_accessories", "cat_audio"}', 50.00, 500.00, '{"Anker", "Bose", "Logitech"}', NOW());
+
+INSERT INTO user_preferences (id, user_session, preferred_categories, preferred_brands, price_range_min, price_range_max) VALUES
+('pref_user1', 'test_user_123', ARRAY['cat_computers', 'cat_accessories'], ARRAY['Apple', 'Dell'], 500.00, 1500.00),
+('pref_user2', 'demo_user_456', ARRAY['cat_phones'], ARRAY['Samsung', 'Google'], 600.00, 1000.00);

@@ -28,7 +28,7 @@ CREATE TABLE products (
 
 CREATE TABLE user_preferences (
     id VARCHAR(32) PRIMARY KEY,
-    user_session VARCHAR(255),
+    user_session VARCHAR(255) UNIQUE NOT NULL,
     preferred_categories VARCHAR(32)[],
     price_range_min DECIMAL(10,2),
     price_range_max DECIMAL(10,2),

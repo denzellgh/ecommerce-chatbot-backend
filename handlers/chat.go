@@ -213,3 +213,59 @@ func (h *ChatHandler) HandleHealthCheck(w http.ResponseWriter, r *http.Request) 
 		Success:    true,
 	}
 }
+
+func (ch *ChatHandler) HandleGetCategories(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	query := `SELECT id, name, description FROM categories WHERE deleted_at IS NULL ORDER BY name`
+	rows, err := ch.db.Query(query)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to get categories"}`, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var categories []map[string]string
+	for rows.Next() {
+		var id, name, description string
+		if err := rows.Scan(&id, &name, &description); err != nil {
+			continue
+		}
+		categories = append(categories, map[string]string{
+			"id":          id,
+			"name":        name,
+			"description": description,
+		})
+	}
+
+	json.NewEncoder(w).Encode(categories)
+}
+
+func (ch *ChatHandler) HandleGetProducts(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	query := `
+        SELECT id, name, brand, category_id, price, stock_quantity, description, COALESCE(specs::text, '{}')
+        FROM products 
+        WHERE deleted_at IS NULL AND stock_quantity > 0
+        ORDER BY name
+    `
+	rows, err := ch.db.Query(query)
+	if err != nil {
+		http.Error(w, `{"error": "Failed to get products"}`, http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var products []models.Products
+	for rows.Next() {
+		var p models.Products
+		err := rows.Scan(&p.ID, &p.Name, &p.Brand, &p.CategoryID, &p.Price, &p.StockQuantity, &p.Description, &p.Specs)
+		if err != nil {
+			continue
+		}
+		products = append(products, p)
+	}
+
+	json.NewEncoder(w).Encode(products)
+}

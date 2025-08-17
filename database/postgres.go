@@ -87,7 +87,7 @@ func (repo *PostgresRepository) ListProducts(ctx context.Context) ([]*models.Pro
 
 	for rows.Next() {
 		var product = models.Products{}
-		if err = rows.Scan(&product.Id, &product.Name, &product.Brand, &product.CreatedAt); err == nil {
+		if err = rows.Scan(&product.ID, &product.Name, &product.Brand, &product.CreatedAt); err == nil {
 			products = append(products, &product)
 		}
 	}
