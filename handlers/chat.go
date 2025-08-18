@@ -90,7 +90,6 @@ func (h *ChatHandler) HandleChatQuery(w http.ResponseWriter, r *http.Request) *m
 	products, err := h.getRelevantProducts(req.Message)
 	if err != nil {
 		log.Printf("Error fetching products: %v", err)
-		// Continue with empty products - AI can still respond
 	}
 
 	aiReq := ai.ChatRequest{
@@ -105,7 +104,6 @@ func (h *ChatHandler) HandleChatQuery(w http.ResponseWriter, r *http.Request) *m
 	aiResp, err := h.aiClient.GenerateResponse(ctx, aiReq)
 	if err != nil {
 		log.Printf("AI generation error: %v", err)
-		http.Error(w, "Sorry, I'm having trouble processing your request right now", http.StatusInternalServerError)
 		return &models.ApiResponse{
 			Data:       nil,
 			StatusCode: http.StatusInternalServerError,
